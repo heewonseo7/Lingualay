@@ -5,7 +5,8 @@
   "description": "Study Anki cards seamlessly while browsing with a clean, modern interface",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms"
   ],
   "action": {
     "default_popup": "popup.html",

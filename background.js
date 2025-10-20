@@ -71,14 +71,6 @@ class LingualayBackground {
         });
     }
 
-    // Handle messages from content scripts
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === 'updateStats') {
-            this.updateStats(request.data);
-            sendResponse({ success: true });
-        }
-    });
-
     async updateStats(data) {
         try {
             await chrome.storage.local.set(data);
@@ -89,4 +81,12 @@ class LingualayBackground {
 }
 
 // Initialize background script
-new LingualayBackground();
+const background = new LingualayBackground();
+
+// Handle messages from content scripts
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'updateStats') {
+        background.updateStats(request.data);
+        sendResponse({ success: true });
+    }
+});
