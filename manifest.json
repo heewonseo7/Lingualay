@@ -26,5 +26,5 @@
       "resources": ["study-overlay.html", "study-overlay.css", "study-overlay.js"],
       "matches": ["<all_urls>"]
     }
-  ],
+  ]
 }
