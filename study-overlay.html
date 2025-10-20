@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lingualay Study Session</title>
+    <link rel="stylesheet" href="study-overlay.css">
+</head>
+<body>
+    <div class="study-overlay" id="studyOverlay">
+        <div class="study-container">
+            <!-- Header -->
+            <div class="study-header">
+                <div class="progress-info">
+                    <span class="card-counter" id="cardCounter">1 / 25</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+                <button class="close-btn" id="closeBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Card Content -->
+            <div class="card-container">
+                <div class="card" id="studyCard">
+                    <div class="card-content">
+                        <div class="card-front" id="cardFront">
+                            <div class="card-text" id="frontText">Loading...</div>
+                        </div>
+                        <div class="card-back" id="cardBack" style="display: none;">
+                            <div class="card-text" id="backText"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Show Answer Button -->
+                    <button class="show-answer-btn" id="showAnswerBtn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        Show Answer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Answer Buttons -->
+            <div class="answer-buttons" id="answerButtons" style="display: none;">
+                <div class="difficulty-label">How well did you know this?</div>
+                <div class="difficulty-buttons">
+                    <button class="difficulty-btn again" data-difficulty="again">
+                        <span class="btn-text">Again</span>
+                        <span class="btn-subtitle">1-10 min</span>
+                    </button>
+                    <button class="difficulty-btn hard" data-difficulty="hard">
+                        <span class="btn-text">Hard</span>
+                        <span class="btn-subtitle">6 min</span>
+                    </button>
+                    <button class="difficulty-btn good" data-difficulty="good">
+                        <span class="btn-text">Good</span>
+                        <span class="btn-subtitle">1 day</span>
+                    </button>
+                    <button class="difficulty-btn easy" data-difficulty="easy">
+                        <span class="btn-text">Easy</span>
+                        <span class="btn-subtitle">4 days</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Session Stats -->
+            <div class="session-stats" id="sessionStats">
+                <div class="stat-item">
+                    <span class="stat-value" id="correctCount">0</span>
+                    <span class="stat-label">Correct</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="incorrectCount">0</span>
+                    <span class="stat-label">Incorrect</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="timeSpent">0:00</span>
+                    <span class="stat-label">Time</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="study-overlay.js"></script>
+</body>
+</html>
