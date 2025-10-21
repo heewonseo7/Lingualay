@@ -2,6 +2,8 @@
 class LingualayPopup {
     constructor() {
         this.storage = chrome.storage.local;
+        this.storageManager = new StorageManager();
+        this.ankiIntegration = new AnkiIntegration();
         this.init();
     }
 
@@ -23,20 +25,19 @@ class LingualayPopup {
         document.getElementById('settingsBtn').addEventListener('click', () => {
             this.openSettings();
         });
+
+        document.getElementById('connectAnki').addEventListener('click', () => {
+            this.connectToAnki();
+        });
     }
 
     async loadStats() {
         try {
-            const data = await this.storage.get([
-                'cardsDue',
-                'cardsStudiedToday',
-                'streak',
-                'lastStudyDate'
-            ]);
-
-            document.getElementById('cardsDue').textContent = data.cardsDue || 0;
-            document.getElementById('cardsStudied').textContent = data.cardsStudiedToday || 0;
-            document.getElementById('streak').textContent = data.streak || 0;
+            const stats = await this.storageManager.getStudyStats();
+            
+            document.getElementById('cardsDue').textContent = stats.cardsDue || 0;
+            document.getElementById('cardsStudied').textContent = stats.cardsStudiedToday || 0;
+            document.getElementById('streak').textContent = stats.streak || 0;
 
             // Update streak if needed
             await this.updateStreak();
@@ -70,13 +71,13 @@ class LingualayPopup {
     }
 
     async checkForDeck() {
-        const data = await this.storage.get(['currentDeck', 'deckProgress']);
+        const deck = await this.storageManager.loadDeck();
         
-        if (data.currentDeck) {
+        if (deck) {
             document.getElementById('deckInfo').style.display = 'block';
-            document.getElementById('deckName').textContent = data.currentDeck.name;
+            document.getElementById('deckName').textContent = deck.name;
             document.getElementById('deckProgress').textContent = 
-                `${data.deckProgress?.studied || 0}/${data.currentDeck.totalCards || 0} cards`;
+                `${deck.studyCount || 0}/${deck.totalCards || 0} cards`;
         }
     }
 
@@ -213,6 +214,176 @@ class LingualayPopup {
             reader.onload = (e) => resolve(e.target.result);
             reader.onerror = (e) => reject(e);
             reader.readAsText(file);
+        });
+    }
+
+    async connectToAnki() {
+        try {
+            this.showNotification('Checking Anki connection...', 'info');
+            
+            const connection = await this.ankiIntegration.checkAnkiConnect();
+            
+            if (connection.success) {
+                this.showNotification('Connected to Anki! Loading your decks...', 'success');
+                
+                // Get available decks from Anki
+                const decks = await this.ankiIntegration.getAnkiDecks();
+                
+                if (decks.success && decks.decks.length > 0) {
+                    // Show deck selection
+                    this.showDeckSelection(decks.decks);
+                } else {
+                    this.showNotification('No decks found in Anki. Please create some cards first.', 'warning');
+                }
+            } else {
+                this.showAnkiSetupInstructions();
+            }
+        } catch (error) {
+            console.error('Error connecting to Anki:', error);
+            this.showNotification('Error connecting to Anki. Please make sure Anki is running.', 'error');
+        }
+    }
+
+    showDeckSelection(decks) {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        `;
+        
+        content.innerHTML = `
+            <h3 style="margin-bottom: 16px; color: #333;">Select a Deck from Anki</h3>
+            <div id="deckList" style="margin-bottom: 20px;">
+                ${decks.map(deck => `
+                    <div class="deck-option" style="padding: 12px; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s;">
+                        <strong>${deck}</strong>
+                    </div>
+                `).join('')}
+            </div>
+            <button id="closeModal" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Cancel</button>
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        content.querySelectorAll('.deck-option').forEach((option, index) => {
+            option.addEventListener('click', async () => {
+                await this.loadAnkiDeck(decks[index]);
+                modal.remove();
+            });
+            
+            option.addEventListener('mouseenter', () => {
+                option.style.background = '#f8f9fa';
+            });
+            
+            option.addEventListener('mouseleave', () => {
+                option.style.background = 'white';
+            });
+        });
+        
+        content.querySelector('#closeModal').addEventListener('click', () => {
+            modal.remove();
+        });
+    }
+
+    async loadAnkiDeck(deckName) {
+        try {
+            this.showNotification(`Loading deck "${deckName}" from Anki...`, 'info');
+            
+            const deckData = await this.ankiIntegration.getDeckCards(deckName, 50);
+            
+            if (deckData.success) {
+                const deck = {
+                    name: deckName,
+                    totalCards: deckData.cards.length,
+                    cards: deckData.cards,
+                    source: 'anki',
+                    createdAt: new Date().toISOString()
+                };
+                
+                await this.storageManager.saveDeck(deck);
+                this.showNotification(`Deck "${deckName}" loaded successfully!`, 'success');
+                await this.loadStats();
+                await this.checkForDeck();
+            } else {
+                this.showNotification('Error loading deck from Anki', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading Anki deck:', error);
+            this.showNotification('Error loading deck from Anki', 'error');
+        }
+    }
+
+    showAnkiSetupInstructions() {
+        const instructions = this.ankiIntegration.getSetupInstructions();
+        
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        `;
+        
+        content.innerHTML = `
+            <h3 style="margin-bottom: 16px; color: #333;">${instructions.title}</h3>
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #667eea; margin-bottom: 12px;">Setup Steps:</h4>
+                <ol style="margin-left: 20px; line-height: 1.6;">
+                    ${instructions.steps.map(step => `<li>${step}</li>`).join('')}
+                </ol>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #667eea; margin-bottom: 12px;">Benefits:</h4>
+                <ul style="margin-left: 20px; line-height: 1.6;">
+                    ${instructions.benefits.map(benefit => `<li>${benefit}</li>`).join('')}
+                </ul>
+            </div>
+            <button id="closeModal" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">Got it!</button>
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        content.querySelector('#closeModal').addEventListener('click', () => {
+            modal.remove();
         });
     }
 
