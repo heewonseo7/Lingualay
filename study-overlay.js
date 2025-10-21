@@ -21,11 +21,14 @@ class StudySession {
 
     async loadDeck() {
         try {
+            console.log('Loading deck...');
+            
             // Listen for deck data from content script
             window.addEventListener('message', (event) => {
                 if (event.data.type === 'DECK_DATA' && event.data.deck) {
-                    console.log('Received deck data:', event.data.deck);
+                    console.log('Received deck data from content script:', event.data.deck);
                     this.cards = event.data.deck.cards || [];
+                    console.log('Cards loaded:', this.cards.length);
                     this.updateProgress();
                     this.showCurrentCard();
                 }
@@ -36,9 +39,15 @@ class StudySession {
             if (result.currentDeck && result.currentDeck.cards) {
                 console.log('Loaded deck from storage:', result.currentDeck);
                 this.cards = result.currentDeck.cards;
+                console.log('Cards from storage:', this.cards.length);
                 this.updateProgress();
+                this.showCurrentCard();
             } else if (this.cards.length === 0) {
-                this.showError('No deck loaded. Please import a deck first.');
+                console.log('No cards found, creating sample cards');
+                // Create sample cards as fallback
+                this.cards = this.createSampleCards();
+                this.updateProgress();
+                this.showCurrentCard();
             }
         } catch (error) {
             console.error('Error loading deck:', error);
@@ -90,8 +99,11 @@ class StudySession {
         }
 
         const card = this.cards[this.currentCardIndex];
-        document.getElementById('frontText').textContent = card.front;
-        document.getElementById('backText').textContent = card.back;
+        console.log('Showing card:', card);
+        
+        // Use innerHTML to preserve HTML content
+        document.getElementById('frontText').innerHTML = card.front || 'No front content';
+        document.getElementById('backText').innerHTML = card.back || 'No back content';
         
         // Reset card state
         document.getElementById('cardBack').style.display = 'none';
@@ -262,6 +274,47 @@ class StudySession {
         
         overlay.appendChild(message);
         document.body.appendChild(overlay);
+    }
+
+    createSampleCards() {
+        const sampleCards = [
+            {
+                id: 'sample_1',
+                front: 'What is the capital of France?',
+                back: 'Paris',
+                difficulty: 'medium',
+                interval: 1,
+                repetitions: 0,
+                dueDate: new Date().toISOString(),
+                tags: ['sample'],
+                deckId: 1
+            },
+            {
+                id: 'sample_2',
+                front: 'What does "Hello" mean in Spanish?',
+                back: 'Hola',
+                difficulty: 'medium',
+                interval: 1,
+                repetitions: 0,
+                dueDate: new Date().toISOString(),
+                tags: ['sample'],
+                deckId: 1
+            },
+            {
+                id: 'sample_3',
+                front: 'What is 2 + 2?',
+                back: '4',
+                difficulty: 'easy',
+                interval: 1,
+                repetitions: 0,
+                dueDate: new Date().toISOString(),
+                tags: ['sample'],
+                deckId: 1
+            }
+        ];
+        
+        console.log('Created sample cards:', sampleCards);
+        return sampleCards;
     }
 
     showError(message) {
