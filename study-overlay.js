@@ -43,11 +43,8 @@ class StudySession {
                 this.updateProgress();
                 this.showCurrentCard();
             } else if (this.cards.length === 0) {
-                console.log('No cards found, creating sample cards');
-                // Create sample cards as fallback
-                this.cards = this.createSampleCards();
-                this.updateProgress();
-                this.showCurrentCard();
+                console.log('No cards found, showing error');
+                this.showError('No deck loaded. Please import a deck first.');
             }
         } catch (error) {
             console.error('Error loading deck:', error);
@@ -276,46 +273,6 @@ class StudySession {
         document.body.appendChild(overlay);
     }
 
-    createSampleCards() {
-        const sampleCards = [
-            {
-                id: 'sample_1',
-                front: 'What is the capital of France?',
-                back: 'Paris',
-                difficulty: 'medium',
-                interval: 1,
-                repetitions: 0,
-                dueDate: new Date().toISOString(),
-                tags: ['sample'],
-                deckId: 1
-            },
-            {
-                id: 'sample_2',
-                front: 'What does "Hello" mean in Spanish?',
-                back: 'Hola',
-                difficulty: 'medium',
-                interval: 1,
-                repetitions: 0,
-                dueDate: new Date().toISOString(),
-                tags: ['sample'],
-                deckId: 1
-            },
-            {
-                id: 'sample_3',
-                front: 'What is 2 + 2?',
-                back: '4',
-                difficulty: 'easy',
-                interval: 1,
-                repetitions: 0,
-                dueDate: new Date().toISOString(),
-                tags: ['sample'],
-                deckId: 1
-            }
-        ];
-        
-        console.log('Created sample cards:', sampleCards);
-        return sampleCards;
-    }
 
     showError(message) {
         const errorDiv = document.createElement('div');
