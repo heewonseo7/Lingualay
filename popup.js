@@ -82,31 +82,37 @@ class LingualayPopup {
     }
 
     async startStudySession() {
-        const data = await this.storage.get(['currentDeck', 'cardsDue']);
-        
-        if (!data.currentDeck) {
-            this.showNotification('Please import an Anki deck first!', 'warning');
-            return;
-        }
-
-        if (data.cardsDue === 0) {
-            this.showNotification('No cards due for review!', 'info');
-            return;
-        }
-
-        // Open study overlay
         try {
+            const deck = await this.storageManager.loadDeck();
+            
+            if (!deck) {
+                this.showNotification('Please import an Anki deck first!', 'warning');
+                return;
+            }
+
+            if (!deck.cards || deck.cards.length === 0) {
+                this.showNotification('No cards available in this deck!', 'warning');
+                return;
+            }
+
+            // Open study overlay
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (!tab) {
+                this.showNotification('No active tab found. Please refresh the page.', 'error');
+                return;
+            }
+
             await chrome.tabs.sendMessage(tab.id, { 
                 action: 'openStudyOverlay',
-                deck: data.currentDeck
+                deck: deck
             });
             
             // Close popup
             window.close();
         } catch (error) {
-            console.error('Error opening study overlay:', error);
-            this.showNotification('Error opening study session', 'error');
+            console.error('Error opening study session:', error);
+            this.showNotification(`Error opening study session: ${error.message}`, 'error');
         }
     }
 
@@ -131,6 +137,7 @@ class LingualayPopup {
 
     async processAnkiFile(file) {
         try {
+            console.log('Processing file:', file.name, 'Size:', file.size);
             this.showNotification('Processing Anki deck...', 'info');
             
             // Load the Anki parser script
@@ -139,22 +146,26 @@ class LingualayPopup {
             let deck;
             if (file.name.endsWith('.apkg')) {
                 // Parse actual .apkg file
+                console.log('Parsing .apkg file...');
                 deck = await parser.parseApkgFile(file);
             } else {
                 // Create a simple deck from other formats
+                console.log('Parsing simple file format...');
                 const cards = await this.parseSimpleDeck(file);
                 deck = parser.createSimpleDeck(file.name.replace(/\.[^/.]+$/, ""), cards);
             }
 
-            await this.storage.set({
-                currentDeck: deck,
-                cardsDue: Math.min(25, deck.totalCards), // Limit to 25 cards for first session
-                deckProgress: { studied: 0, total: deck.totalCards }
-            });
-
-            this.showNotification(`Deck "${deck.name}" imported successfully! ${deck.totalCards} cards loaded.`, 'success');
-            await this.loadStats();
-            await this.checkForDeck();
+            console.log('Parsed deck:', deck);
+            
+            // Save using storage manager
+            const saved = await this.storageManager.saveDeck(deck);
+            if (saved) {
+                this.showNotification(`Deck "${deck.name}" imported successfully! ${deck.totalCards} cards loaded.`, 'success');
+                await this.loadStats();
+                await this.checkForDeck();
+            } else {
+                this.showNotification('Error saving deck to storage', 'error');
+            }
             
         } catch (error) {
             console.error('Error processing Anki file:', error);

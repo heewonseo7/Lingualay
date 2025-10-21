@@ -21,13 +21,24 @@ class StudySession {
 
     async loadDeck() {
         try {
-            // Get deck data from storage
+            // Listen for deck data from content script
+            window.addEventListener('message', (event) => {
+                if (event.data.type === 'DECK_DATA' && event.data.deck) {
+                    console.log('Received deck data:', event.data.deck);
+                    this.cards = event.data.deck.cards || [];
+                    this.updateProgress();
+                    this.showCurrentCard();
+                }
+            });
+            
+            // Also try to get from storage as fallback
             const result = await chrome.storage.local.get(['currentDeck']);
-            if (result.currentDeck) {
-                this.cards = result.currentDeck.cards || [];
+            if (result.currentDeck && result.currentDeck.cards) {
+                console.log('Loaded deck from storage:', result.currentDeck);
+                this.cards = result.currentDeck.cards;
                 this.updateProgress();
-            } else {
-                this.showError('No deck loaded');
+            } else if (this.cards.length === 0) {
+                this.showError('No deck loaded. Please import a deck first.');
             }
         } catch (error) {
             console.error('Error loading deck:', error);
