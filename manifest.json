@@ -24,7 +24,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["study-overlay.html", "study-overlay.css", "study-overlay.js"],
+      "resources": ["study-overlay.html", "study-overlay.css", "study-overlay.js", "anki-parser.js"],
       "matches": ["<all_urls>"]
     }
   ]

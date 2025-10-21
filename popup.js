@@ -113,7 +113,7 @@ class LingualayPopup {
         // Create file input for .apkg files
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.apkg,.anki2';
+        input.accept = '.apkg,.anki2,.txt,.csv,.json';
         input.style.display = 'none';
         
         input.onchange = async (event) => {
@@ -132,28 +132,32 @@ class LingualayPopup {
         try {
             this.showNotification('Processing Anki deck...', 'info');
             
-            // For now, we'll create a sample deck structure
-            // In a real implementation, you'd parse the .apkg file
-            const sampleDeck = {
-                name: file.name.replace(/\.[^/.]+$/, ""),
-                totalCards: 50,
-                cards: this.generateSampleCards(50),
-                createdAt: new Date().toISOString()
-            };
+            // Load the Anki parser script
+            const parser = new AnkiParser();
+            
+            let deck;
+            if (file.name.endsWith('.apkg')) {
+                // Parse actual .apkg file
+                deck = await parser.parseApkgFile(file);
+            } else {
+                // Create a simple deck from other formats
+                const cards = await this.parseSimpleDeck(file);
+                deck = parser.createSimpleDeck(file.name.replace(/\.[^/.]+$/, ""), cards);
+            }
 
             await this.storage.set({
-                currentDeck: sampleDeck,
-                cardsDue: 25,
-                deckProgress: { studied: 0, total: 50 }
+                currentDeck: deck,
+                cardsDue: Math.min(25, deck.totalCards), // Limit to 25 cards for first session
+                deckProgress: { studied: 0, total: deck.totalCards }
             });
 
-            this.showNotification('Deck imported successfully!', 'success');
+            this.showNotification(`Deck "${deck.name}" imported successfully! ${deck.totalCards} cards loaded.`, 'success');
             await this.loadStats();
             await this.checkForDeck();
             
         } catch (error) {
             console.error('Error processing Anki file:', error);
-            this.showNotification('Error processing deck file', 'error');
+            this.showNotification(`Error processing deck file: ${error.message}`, 'error');
         }
     }
 
@@ -181,8 +185,35 @@ class LingualayPopup {
     }
 
     openSettings() {
-        // Open settings page or show settings modal
+        // Open settings page
         chrome.tabs.create({ url: chrome.runtime.getURL('settings.html') });
+    }
+
+    async parseSimpleDeck(file) {
+        // Parse simple text-based deck formats
+        const text = await this.readFileAsText(file);
+        const lines = text.split('\n').filter(line => line.trim());
+        const cards = [];
+        
+        for (let i = 0; i < lines.length; i += 2) {
+            if (lines[i] && lines[i + 1]) {
+                cards.push({
+                    front: lines[i].trim(),
+                    back: lines[i + 1].trim()
+                });
+            }
+        }
+        
+        return cards;
+    }
+
+    readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsText(file);
+        });
     }
 
     showNotification(message, type = 'info') {
