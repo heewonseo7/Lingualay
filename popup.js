@@ -140,17 +140,16 @@ class LingualayPopup {
             console.log('Processing file:', file.name, 'Size:', file.size);
             this.showNotification('Processing Anki deck...', 'info');
             
-            // Load the Anki parser script
-            const parser = new AnkiParser();
-            
             let deck;
             if (file.name.endsWith('.apkg')) {
-                // Parse actual .apkg file
-                console.log('Parsing .apkg file...');
-                deck = await parser.parseApkgFile(file);
+                // Use real Anki parser for .apkg files
+                console.log('Parsing real .apkg file...');
+                const realParser = new RealAnkiParser();
+                deck = await realParser.parseApkgFile(file);
             } else {
-                // Create a simple deck from other formats
+                // Use fallback parser for other formats
                 console.log('Parsing simple file format...');
+                const parser = new AnkiParser();
                 const cards = await this.parseSimpleDeck(file);
                 deck = parser.createSimpleDeck(file.name.replace(/\.[^/.]+$/, ""), cards);
             }
