@@ -71,7 +71,7 @@ class AnkiIntegration {
     }
 
     // Get cards from a specific deck
-    async getDeckCards(deckName, limit = 100) {
+    async getDeckCards(deckName, limit = null) {
         try {
             const response = await fetch(this.ankiConnectUrl, {
                 method: 'POST',
@@ -89,7 +89,7 @@ class AnkiIntegration {
 
             if (response.ok) {
                 const cardIds = await response.json();
-                const cardLimit = Math.min(limit, cardIds.result.length);
+                const cardLimit = limit ? Math.min(limit, cardIds.result.length) : cardIds.result.length;
                 const limitedCardIds = cardIds.result.slice(0, cardLimit);
 
                 // Get card details

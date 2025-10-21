@@ -103,13 +103,43 @@ class LingualayPopup {
                 return;
             }
 
-            await chrome.tabs.sendMessage(tab.id, { 
-                action: 'openStudyOverlay',
-                deck: deck
-            });
-            
-            // Close popup
-            window.close();
+            try {
+                // Send message to content script
+                await chrome.tabs.sendMessage(tab.id, { 
+                    action: 'openStudyOverlay',
+                    deck: deck
+                });
+                
+                // Close popup
+                window.close();
+            } catch (error) {
+                console.error('Error sending message to content script:', error);
+                
+                // Fallback: inject content script if not present
+                try {
+                    await chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        files: ['content.js']
+                    });
+                    
+                    // Wait a bit for script to load, then try again
+                    setTimeout(async () => {
+                        try {
+                            await chrome.tabs.sendMessage(tab.id, { 
+                                action: 'openStudyOverlay',
+                                deck: deck
+                            });
+                            window.close();
+                        } catch (retryError) {
+                            console.error('Retry failed:', retryError);
+                            this.showNotification('Error opening study session. Please refresh the page and try again.', 'error');
+                        }
+                    }, 500);
+                } catch (injectError) {
+                    console.error('Error injecting content script:', injectError);
+                    this.showNotification('Error opening study session. Please refresh the page and try again.', 'error');
+                }
+            }
         } catch (error) {
             console.error('Error opening study session:', error);
             this.showNotification(`Error opening study session: ${error.message}`, 'error');
@@ -320,7 +350,7 @@ class LingualayPopup {
         try {
             this.showNotification(`Loading deck "${deckName}" from Anki...`, 'info');
             
-            const deckData = await this.ankiIntegration.getDeckCards(deckName, 50);
+            const deckData = await this.ankiIntegration.getDeckCards(deckName);
             
             if (deckData.success) {
                 const deck = {
